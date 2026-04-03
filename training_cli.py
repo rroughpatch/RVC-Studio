@@ -9,7 +9,7 @@ import datetime
 
 hps = utils.get_hparams()
 os.environ["CUDA_VISIBLE_DEVICES"] = hps.gpus.replace("-", ",")
-os.environ["NCCL_P2P_DISABLE"] = 1
+os.environ["NCCL_P2P_DISABLE"] = "1"
 from random import shuffle, randint
 
 import torch
@@ -52,7 +52,17 @@ from lib.train.mel_processing import mel_spectrogram_torch, spec_to_mel_torch
 global_step = 0
 least_loss = 40
 
-def save_checkpoint(ckpt, sr, if_f0, name, epoch, version, hps, model_path=os.path.join(BASE_MODELS_DIR,"RVC")):
+
+def save_checkpoint(
+    ckpt,
+    sr,
+    if_f0,
+    name,
+    epoch,
+    version,
+    hps,
+    model_path=os.path.join(BASE_MODELS_DIR, "RVC"),
+):
     try:
         opt = OrderedDict()
         opt["weight"] = {}
@@ -84,10 +94,11 @@ def save_checkpoint(ckpt, sr, if_f0, name, epoch, version, hps, model_path=os.pa
         opt["sr"] = sr
         opt["f0"] = if_f0
         opt["version"] = version
-        torch.save(opt, os.path.join(model_path,name+".pth"))
+        torch.save(opt, os.path.join(model_path, name + ".pth"))
         return "Success."
     except:
         return traceback.format_exc()
+
 
 class EpochRecorder:
     def __init__(self):
@@ -113,23 +124,20 @@ def main():
         n_gpus = 1
     os.environ["MASTER_ADDR"] = "localhost"
     os.environ["MASTER_PORT"] = str(randint(20000, 55555))
-    os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "max_split_size_mb:128,garbage_collection_threshold:0.8"
+    os.environ["PYTORCH_CUDA_ALLOC_CONF"] = (
+        "max_split_size_mb:128,garbage_collection_threshold:0.8"
+    )
     children = {}
     gpu_devices = hps.gpus.split("-") if hps.gpus else range(n_gpus)
     for i, device in enumerate(gpu_devices):
         subproc = mp.Process(
             target=run,
-            args=(
-                i,
-                n_gpus,
-                hps,
-                device
-            ),
+            args=(i, n_gpus, hps, device),
         )
-        children[i]=subproc
+        children[i] = subproc
         subproc.start()
 
-    for i in gpu_devices:
+    for i in range(len(children)):
         children[i].join()
 
 
@@ -518,14 +526,16 @@ def train_and_evaluate(
                 if loss_kl > 9:
                     loss_kl = 9
 
-                logger.info(f"epoch={epoch} steps={global_step} lr={lr} total_loss={loss_gen_all}")
-                
+                logger.info(
+                    f"epoch={epoch} steps={global_step} lr={lr} total_loss={loss_gen_all}"
+                )
+
                 logger.info(
                     f"loss_disc={loss_disc:.3f}, loss_gen={loss_gen:.3f}, loss_fm={loss_fm:.3f},loss_mel={loss_mel:.3f}, loss_kl={loss_kl:.3f}"
                 )
-                if loss_gen_all<int(least_loss):
+                if loss_gen_all < int(least_loss):
                     least_loss = loss_gen_all
-                    
+
                     if hasattr(net_g, "module"):
                         ckpt = net_g.module.state_dict()
                     else:
@@ -544,14 +554,14 @@ def train_and_evaluate(
                                 epoch,
                                 hps.version,
                                 hps,
-                                model_path=hps.model_dir
+                                model_path=hps.model_dir,
                             ),
                         )
                     )
                     logger.info(
                         f"[lowest loss] loss_disc={loss_disc:.3f}, loss_gen={loss_gen:.3f}, loss_fm={loss_fm:.3f},loss_mel={loss_mel:.3f}, loss_kl={loss_kl:.3f}"
                     )
-                    
+
                 scalar_dict = {
                     "loss/g/total": loss_gen_all,
                     "loss/d/total": loss_disc,
@@ -596,7 +606,7 @@ def train_and_evaluate(
         global_step += 1
     # /Run steps
 
-    if hps.save_every_epoch>0 and (epoch % hps.save_every_epoch == 0) and rank == 0:
+    if hps.save_every_epoch > 0 and (epoch % hps.save_every_epoch == 0) and rank == 0:
         if hps.if_latest == 0:
             utils.save_checkpoint(
                 net_g,
@@ -645,7 +655,7 @@ def train_and_evaluate(
                         epoch,
                         hps.version,
                         hps,
-                        model_path=hps.model_dir
+                        model_path=hps.model_dir,
                     ),
                 )
             )

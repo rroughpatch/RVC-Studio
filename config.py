@@ -41,7 +41,7 @@ class Config:
     @staticmethod
     def arg_parse() -> tuple:
         exe = sys.executable or "python"
-        parser = argparse.ArgumentParser()
+        parser = argparse.ArgumentParser(add_help=False)
         parser.add_argument("--port", type=int, default=7865, help="Listen port")
         parser.add_argument("--pycmd", type=str, default=exe, help="Python command")
         parser.add_argument("--colab", action="store_true", help="Launch in colab")
@@ -58,8 +58,9 @@ class Config:
             action="store_true",
             help="torch_dml",
         )
-        cmd_opts, unknown = parser.parse_known_args() # allows import to jupyter notebook
-        print(f"unknown args: {unknown}")
+        # Ignore unrelated CLI flags so modules can import config from other entrypoints
+        # like training, preprocessing, or notebook workflows without noisy output.
+        cmd_opts, _ = parser.parse_known_args()
 
         # cmd_opts.port = cmd_opts.port if 0 <= cmd_opts.port <= 65535 else 7865
 
@@ -141,28 +142,51 @@ class Config:
             x_max = 32
         if self.dml:
             print("use DirectML instead")
-            if(os.path.exists("runtime\Lib\site-packages\onnxruntime\capi\DirectML.dll")==False):
+            if (
+                os.path.exists(
+                    "runtime\Lib\site-packages\onnxruntime\capi\DirectML.dll"
+                )
+                == False
+            ):
                 try:
-                    os.rename("runtime\Lib\site-packages\onnxruntime", "runtime\Lib\site-packages\onnxruntime-cuda")
+                    os.rename(
+                        "runtime\Lib\site-packages\onnxruntime",
+                        "runtime\Lib\site-packages\onnxruntime-cuda",
+                    )
                 except:
                     pass
                 try:
-                    os.rename("runtime\Lib\site-packages\onnxruntime-dml", "runtime\Lib\site-packages\onnxruntime")
+                    os.rename(
+                        "runtime\Lib\site-packages\onnxruntime-dml",
+                        "runtime\Lib\site-packages\onnxruntime",
+                    )
                 except:
                     pass
             import torch_directml
+
             self.device = torch_directml.device(torch_directml.default_device())
             self.is_half = False
         else:
             if self.instead:
                 print(f"use {self.instead} instead")
-            if(os.path.exists("runtime\Lib\site-packages\onnxruntime\capi\onnxruntime_providers_cuda.dll")==False):
+            if (
+                os.path.exists(
+                    "runtime\Lib\site-packages\onnxruntime\capi\onnxruntime_providers_cuda.dll"
+                )
+                == False
+            ):
                 try:
-                    os.rename("runtime\Lib\site-packages\onnxruntime", "runtime\Lib\site-packages\onnxruntime-dml")
+                    os.rename(
+                        "runtime\Lib\site-packages\onnxruntime",
+                        "runtime\Lib\site-packages\onnxruntime-dml",
+                    )
                 except:
                     pass
                 try:
-                    os.rename("runtime\Lib\site-packages\onnxruntime-cuda", "runtime\Lib\site-packages\onnxruntime")
+                    os.rename(
+                        "runtime\Lib\site-packages\onnxruntime-cuda",
+                        "runtime\Lib\site-packages\onnxruntime",
+                    )
                 except:
                     pass
         return x_pad, x_query, x_center, x_max
