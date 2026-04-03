@@ -16,6 +16,7 @@ __pycache__
 .vscode
 AGENTS.md
 CLAUDE.md
+pnpm-lock.yaml
 *.log
 /vox/
 /vox.zip

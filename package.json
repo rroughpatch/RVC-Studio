@@ -17,8 +17,7 @@
     "check:fix": "vp check --fix",
     "test": "vp run -r test",
     "fmt": "vp fmt",
-    "fmt:check": "vp fmt --check",
-    "prepare": "vp config"
+    "fmt:check": "vp fmt --check"
   },
   "packageManager": "pnpm@10.33.0",
   "catalog": {
