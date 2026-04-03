@@ -318,7 +318,10 @@ def get_hparams(init=True):
         "-e", "--experiment_dir", type=str, required=True, help="experiment dir"
     )
     parser.add_argument(
-        "-n", "--name", type=str, help="name of the model, uses experiment_dir as default"
+        "-n",
+        "--name",
+        type=str,
+        help="name of the model, uses experiment_dir as default",
     )
     parser.add_argument(
         "-sr", "--sample_rate", type=str, required=True, help="sample rate, 32k/40k/48k"
@@ -354,7 +357,6 @@ def get_hparams(init=True):
         required=True,
         help="if caching the dataset in GPU memory, 1 or 0",
     )
-
 
     args = parser.parse_args()
     name = args.name or args.experiment_dir
@@ -393,7 +395,7 @@ def get_hparams(init=True):
     hparams.if_latest = args.if_latest
     hparams.save_every_weights = args.save_every_weights
     hparams.if_cache_data_in_gpu = args.if_cache_data_in_gpu
-    hparams.data.training_files = os.path.join(experiment_dir,"filelist.txt")
+    hparams.data.training_files = os.path.join(experiment_dir, "filelist.txt")
     return hparams
 
 
