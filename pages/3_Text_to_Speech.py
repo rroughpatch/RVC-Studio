@@ -13,7 +13,7 @@ from webui.components import (
     save_voice_conversion_params,
     voice_conversion_form,
 )
-from services.ml.tts_cli import generate_speech
+from tts_cli import generate_speech
 from webui.contexts import SessionStateContext
 from lib.audio import save_input_audio
 
