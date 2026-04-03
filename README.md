@@ -50,14 +50,14 @@ Current status:
 4. Sync the project environment with `uv sync`.
 5. Run the Streamlit app with `uv run streamlit run Home.py`.
 
-To start the API server directly, use `uv run python api.py`.
+To start the ML API service directly, use `uv run python -m services.ml`.
 
 Or run it in [Google Colab](https://colab.research.google.com/github/SayanoAI/RVC-Studio/blob/master/RVC_Studio.ipynb)
 
 ## Instructions for Inference page
 1. Download all the required models on the webui page or here: https://huggingface.co/datasets/SayanoAI/RVC-Studio/tree/main
 2. Put your favourite songs in the ./songs folder
-3. Navigate to "RVC Server" page and start the server
+3. Navigate to "RVC Server" page and start the ML service
 4. Navigate to "Inference" page and press "Refresh Data" button
 5. Select a song (only wav/flac/ogg/mp3 are supported for now)
 6. Select a voice model (put your RVC v2 models in ./models/RVC/ and index file in ./models/RVC/.index/)

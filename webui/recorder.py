@@ -7,7 +7,7 @@ import threading
 import torch
 import webrtcvad
 from lib import BASE_MODELS_DIR
-from rvc_for_realtime import RVC
+from services.ml.rvc_for_realtime import RVC
 from lib.audio import remix_audio
 
 from lib.utils import ObjectNamespace, gc_collect

@@ -11,7 +11,15 @@ from lib import BASE_DIR, config, i18n, BASE_MODELS_DIR, DATASETS_DIR, LOG_DIR
 st.set_page_config(layout="centered", menu_items=MENU_ITEMS)
 
 from webui.components import active_subprocess_list, file_uploader_form
-from tts_cli import EMBEDDING_CHECKPOINT, TTS_MODELS_DIR
+from services.ml.training import (
+    EMBEDDING_CHECKPOINT,
+    TTS_MODELS_DIR,
+    extract_features as ml_extract_features,
+    preprocess_data as ml_preprocess_data,
+    train_index as ml_train_index,
+    train_model as ml_train_model,
+    train_speaker_embedding as ml_train_speaker_embedding,
+)
 
 from lib.audio import load_input_audio, save_input_audio
 
@@ -19,7 +27,10 @@ from lib.utils import ObjectNamespace
 import subprocess
 import faiss
 import torch
-from preprocessing_utils import extract_features_trainset, preprocess_trainset
+from services.ml.preprocessing_utils import (
+    extract_features_trainset,
+    preprocess_trainset,
+)
 from webui.contexts import ProgressBarContext, SessionStateContext
 
 from lib.utils import get_filenames, get_index
@@ -28,45 +39,14 @@ from lib.utils import get_filenames, get_index
 def preprocess_data(
     exp_dir, sr, trainset_dir, n_threads, version, period=3.0, overlap=0.3
 ):
-    model_log_dir = os.path.join(LOG_DIR, f"{exp_dir}_{version}_{sr}")
-    os.makedirs(model_log_dir, exist_ok=True)
-    return preprocess_trainset(
-        trainset_dir, SR_MAP[sr], n_threads, model_log_dir, period, overlap
+    return ml_preprocess_data(
+        exp_dir, sr, trainset_dir, n_threads, version, period, overlap
     )
 
 
 def extract_features(exp_dir, n_threads, version, if_f0, f0method, device, sr):
-    model_log_dir = os.path.join(LOG_DIR, f"{exp_dir}_{version}_{sr}")
-    os.makedirs(model_log_dir, exist_ok=True)
-
-    # if if_f0: #pitch extraction
-    # n_p = n_threads if device=="cpu" else torch.cuda.device_count()
-    n_p = max(
-        n_threads // (len(f0method) if isinstance(f0method, list) else os.cpu_count()),
-        1,
-    )
-
-    if isinstance(f0method, list):
-        return "\n".join(
-            [
-                extract_features_trainset(
-                    model_log_dir,
-                    n_p=n_p,
-                    f0method=method,
-                    device=device,
-                    if_f0=if_f0,
-                    version=version,
-                )
-                for method in f0method
-            ]
-        )
-    return extract_features_trainset(
-        model_log_dir,
-        n_p=n_p,
-        f0method=f0method,
-        device=device,
-        if_f0=if_f0,
-        version=version,
+    return ml_extract_features(
+        exp_dir, n_threads, version, if_f0, f0method, device, sr
     )
 
 
@@ -171,128 +151,26 @@ def train_model(
     if_cache_gpu,
     if_save_every_weights,
 ):
-    try:
-        print(i18n("training.train_model"))
-        create_filelist(exp_dir, if_f0, spk_id, version, sr)
-
-        model_log_dir = os.path.join(LOG_DIR, f"{exp_dir}_{version}_{sr}")
-        train_log = os.path.join(model_log_dir, "train.log")
-        cmd = [
-            config.python_cmd,
-            "training_cli.py",
-            "-e",
-            f"{exp_dir}_{version}_{sr}",
-            "-n",
-            exp_dir,
-            "-sr",
-            sr,
-            "-f0",
-            str(1 if if_f0 else 0),
-            "-bs",
-            str(batch_size),
-            "-te",
-            str(total_epoch),
-            "-se",
-            str(save_epoch),
-            "-l",
-            str(1 if if_save_latest else 0),
-            "-c",
-            str(1 if if_cache_gpu else 0),
-            "-sw",
-            str(1 if if_save_every_weights else 0),
-            "-v",
-            version,
-        ]
-        if gpus:
-            cmd.extend(["-g", gpus])
-        if pretrained_G and gpus:
-            cmd.extend(["-pg", pretrained_G])
-        if pretrained_D and gpus:
-            cmd.extend(["-pd", pretrained_D])
-
-        with open(train_log, "a") as log_file:
-            subprocess.Popen(
-                cmd,
-                cwd=BASE_DIR,
-                stdout=log_file,
-                stderr=subprocess.STDOUT,
-            )
-
-        command_str = " ".join(shlex.quote(part) for part in cmd)
-        return (
-            f"Successfully started training with {command_str}. "
-            f"Logs are being written to {train_log}."
-        )
-    except Exception as e:
-        return f"Failed to initiate training: {e}"
+    return ml_train_model(
+        exp_dir=exp_dir,
+        if_f0=if_f0,
+        spk_id=spk_id,
+        version=version,
+        sr=sr,
+        gpus=gpus,
+        batch_size=batch_size,
+        total_epoch=total_epoch,
+        save_epoch=save_epoch,
+        pretrained_G=pretrained_G,
+        pretrained_D=pretrained_D,
+        if_save_latest=if_save_latest,
+        if_cache_gpu=if_cache_gpu,
+        if_save_every_weights=if_save_every_weights,
+    )
 
 
 def train_index(exp_dir, version, sr):
-    try:
-        model_log_dir = os.path.join(LOG_DIR, f"{exp_dir}_{version}_{sr}")
-        feature_dir = os.sep.join(
-            [model_log_dir, "3_feature256" if version == "v1" else "3_feature768"]
-        )
-        os.makedirs(feature_dir, exist_ok=True)
-
-        npys = []
-        listdir_res = list(os.listdir(feature_dir))
-        for name in sorted(listdir_res):
-            phone = np.load(os.sep.join([feature_dir, name]))
-            npys.append(phone)
-        big_npy = np.concatenate(npys, 0)
-
-        big_npy_idx = np.arange(big_npy.shape[0])
-        np.random.shuffle(big_npy_idx)
-        big_npy = big_npy[big_npy_idx]
-
-        if big_npy.shape[0] > 2e5:
-            big_npy = (
-                MiniBatchKMeans(
-                    n_clusters=10000,
-                    verbose=True,
-                    batch_size=256 * config.n_cpu,
-                    compute_labels=False,
-                    init="random",
-                )
-                .fit(big_npy)
-                .cluster_centers_
-            )
-
-        np.save("%s/total_fea.npy" % model_log_dir, big_npy)
-
-        # n_ivf =  big_npy.shape[0] // 39
-        n_ivf = min(int(16 * np.sqrt(big_npy.shape[0])), big_npy.shape[0] // 39)
-        print("%s,%s" % (big_npy.shape, n_ivf))
-        index = faiss.index_factory(
-            256 if version == "v1" else 768, "IVF%s,Flat" % n_ivf
-        )
-        print("training index")
-        index_ivf = faiss.extract_index_ivf(index)  #
-        index_ivf.nprobe = 1
-        index.train(big_npy)
-        faiss.write_index(
-            index,
-            os.sep.join(
-                [
-                    model_log_dir,
-                    f"trained_IVF{n_ivf}_Flat_nprobe_{index_ivf.nprobe}_{exp_dir}_{version}.index",
-                ]
-            ),
-        )
-        print("adding index")
-        batch_size_add = 8192
-        for i in range(0, big_npy.shape[0], batch_size_add):
-            index.add(big_npy[i : i + batch_size_add])
-
-        index_name = os.path.join(
-            BASE_MODELS_DIR, "RVC", ".index", f"{exp_dir}_{version}_{sr}.index"
-        )
-        faiss.write_index(index, index_name)
-
-        return f"saved index file to {index_name}"
-    except Exception as e:
-        return f"Failed to train index: {e}"
+    return ml_train_index(exp_dir, version, sr)
 
 
 def one_click_train():  # TODO not implemented yet
@@ -314,46 +192,8 @@ def one_click_train():  # TODO not implemented yet
     print(i18n("全流程结束！"))
 
 
-def train_speaker_embedding(exp_dir: str, model_log_dir: str):
-    try:
-        # get dataset
-        training_file = os.path.join(LOG_DIR, model_log_dir, "embedding.wav")
-        if os.path.isfile(training_file):
-            audio = load_input_audio(training_file, sr=16000, mono=True)[0]
-        else:
-            dataset_dir = os.path.join(LOG_DIR, model_log_dir, "1_16k_wavs")
-            audio = np.concatenate(
-                [
-                    load_input_audio(
-                        os.path.join(dataset_dir, fname), sr=16000, mono=True
-                    )[0]
-                    for fname in os.listdir(dataset_dir)
-                ],
-                axis=None,
-            )
-            save_input_audio(training_file, (audio, 16000))
-
-        # train embedding
-        from speechbrain.pretrained import EncoderClassifier
-
-        os.environ["HUGGINGFACE_HUB_CACHE"] = os.path.join(
-            TTS_MODELS_DIR, EMBEDDING_CHECKPOINT
-        )
-        classifier = EncoderClassifier.from_hparams(
-            source=EMBEDDING_CHECKPOINT,
-            savedir=os.path.join(TTS_MODELS_DIR, EMBEDDING_CHECKPOINT),
-        )
-        embeddings = classifier.encode_batch(
-            torch.from_numpy(audio), normalize=True
-        ).squeeze(0)
-
-        # save embedding file
-        embedding_path = os.path.join(TTS_MODELS_DIR, "embeddings", f"{exp_dir}.npy")
-        os.makedirs(os.path.dirname(embedding_path), exist_ok=True)
-        np.save(embedding_path, embeddings.numpy())
-        return f"Saved speaker embedding to: {embedding_path}"
-    except Exception as e:
-        return f"Failed to train speecht5 speaker embedding: {e}"
+def train_speaker_embedding(exp_dir: str, version: str, sr: str):
+    return ml_train_speaker_embedding(exp_dir, version, sr)
 
 
 def init_training_state():
@@ -615,7 +455,9 @@ if __name__ == "__main__":
                 state.exp_dir and os.path.exists(os.path.join(LOG_DIR, model_log_dir))
             )
             if st.button(i18n("training.train_speaker.submit"), disabled=disabled):
-                st.toast(train_speaker_embedding(state.exp_dir, model_log_dir))
+                st.toast(
+                    train_speaker_embedding(state.exp_dir, state.version, state.sr)
+                )
             else:
                 st.markdown("*Only required for speecht5 TTS*")
 
