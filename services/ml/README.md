@@ -2,6 +2,11 @@
 
 `services/ml` is the target home for the Python compute layer.
 
+The FastAPI entrypoint now lives at `services/ml/api.py`, and the `server`
+package has been copied under `services/ml/server`. The repo root still exports
+compatibility wrappers (`api.py` and `server/*`) so the existing Streamlit and
+CLI flows keep working while the rest of the migration continues.
+
 The Python code has not been moved into this directory yet because the current app
 still derives `BASE_DIR` from the process working directory in `lib/__init__.py`.
 Moving the runtime without adding compatibility shims would immediately break path
