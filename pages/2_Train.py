@@ -179,7 +179,8 @@ def train_model(
         train_log = os.path.join(model_log_dir, "train.log")
         cmd = [
             config.python_cmd,
-            "training_cli.py",
+            "-m",
+            "services.ml.training_cli",
             "-e",
             f"{exp_dir}_{version}_{sr}",
             "-n",
