@@ -11,7 +11,7 @@ from lib import BASE_DIR, config, i18n, BASE_MODELS_DIR, DATASETS_DIR, LOG_DIR
 st.set_page_config(layout="centered", menu_items=MENU_ITEMS)
 
 from webui.components import active_subprocess_list, file_uploader_form
-from tts_cli import EMBEDDING_CHECKPOINT, TTS_MODELS_DIR
+from services.ml.tts_cli import EMBEDDING_CHECKPOINT, TTS_MODELS_DIR
 
 from lib.audio import load_input_audio, save_input_audio
 
@@ -19,7 +19,10 @@ from lib.utils import ObjectNamespace
 import subprocess
 import faiss
 import torch
-from preprocessing_utils import extract_features_trainset, preprocess_trainset
+from services.ml.preprocessing_utils import (
+    extract_features_trainset,
+    preprocess_trainset,
+)
 from webui.contexts import ProgressBarContext, SessionStateContext
 
 from lib.utils import get_filenames, get_index
