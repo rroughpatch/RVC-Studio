@@ -97,6 +97,14 @@ def load_audio(file, sr, **kwargs):
         file = (
             file.strip(" ").strip('"').strip("\n").strip('"').strip(" ")
         )  # 防止小白拷路径头尾带了空格和"和回车
+        ext = os.path.splitext(file)[1].lower()
+
+        if ext in {".wav", ".flac"}:
+            audio, input_sr = sf.read(file, dtype="float32", always_2d=False)
+            if audio.ndim > 1 and audio.shape[-1] < audio.shape[0]:
+                audio = audio.T
+            return remix_audio((audio, input_sr), target_sr=sr, **kwargs)
+
         out, _ = (
             ffmpeg.input(file, threads=0)
             .output("-", format="f32le", acodec="pcm_f32le", ac=1, ar=sr)

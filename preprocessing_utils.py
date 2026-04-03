@@ -1,6 +1,7 @@
 import sys
 import os
 import multiprocessing
+from pathlib import Path
 from threading import Thread
 from scipy import signal
 import numpy as np
@@ -110,7 +111,13 @@ class Preprocess:
                 ("%s/%s" % (inp_root, name), idx)
                 for idx, name in enumerate(sorted(list(os.listdir(inp_root))))
             ]
-            if self.noparallel:
+            if len(infos) == 0:
+                self.println("No input files found.")
+                return
+
+            n_p = max(1, min(int(n_p), len(infos)))
+
+            if self.noparallel or n_p == 1:
                 for i in range(n_p):
                     self.pipeline_mp(infos[i::n_p])
             else:
@@ -237,9 +244,19 @@ class FeatureInput(FeatureExtractor):
 
 def preprocess_trainset(inp_root, sr, n_p, exp_dir, period=3.0, overlap=0.3):
     try:
-        pp = Preprocess(sr, exp_dir, period=period, overlap=overlap)
+        pp = Preprocess(
+            sr,
+            exp_dir,
+            noparallel=config.noparallel,
+            period=period,
+            overlap=overlap,
+        )
         pp.println("start preprocess")
         pp.println(sys.argv)
+        pp.println(
+            f"preprocess config: files={len(list(Path(inp_root).iterdir()))}, "
+            f"workers={max(int(n_p), 1)}, parallel={not pp.noparallel}"
+        )
         pp.pipeline_mp_inp_dir(inp_root, n_p)
         pp.println("end preprocess")
         del pp
