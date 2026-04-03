@@ -33,16 +33,43 @@ def _job_dir(job_id: str):
     return path
 
 
+def _metadata_path(job_id: str):
+    return os.path.join(JOBS_DIR, job_id, "job.json")
+
+
+def _load_job_from_disk(job_id: str):
+    path = _metadata_path(job_id)
+    if not os.path.isfile(path):
+        return None
+    with open(path, "r", encoding="utf-8") as handle:
+        job = json.load(handle)
+    with _LOCK:
+        _JOBS[job_id] = job
+    return dict(job)
+
+
+def _persist_job(job: dict):
+    _write_json(_metadata_path(job["id"]), job)
+    with _LOCK:
+        _JOBS[job["id"]] = dict(job)
+    return dict(job)
+
+
 def _job_snapshot(job_id: str):
+    job = _load_job_from_disk(job_id)
+    if job is not None:
+        return job
     with _LOCK:
         job = _JOBS.get(job_id)
         return None if job is None else dict(job)
 
 
 def _update_job(job_id: str, **updates):
-    with _LOCK:
-        _JOBS[job_id].update(updates)
-        return dict(_JOBS[job_id])
+    current = _job_snapshot(job_id)
+    if current is None:
+        raise KeyError(job_id)
+    current.update(updates)
+    return _persist_job(current)
 
 
 def _register_job(kind: str, metadata: dict):
@@ -65,9 +92,7 @@ def _register_job(kind: str, metadata: dict):
         "result": None,
         "error": None,
     }
-    with _LOCK:
-        _JOBS[job_id] = job
-    return dict(job)
+    return _persist_job(job)
 
 
 def _start_process(job_id: str, cmd: list[str], log_path: str | None = None):
@@ -143,8 +168,12 @@ def _watch_process(job_id: str, process: subprocess.Popen):
 
 
 def _write_json(path: str, data: dict):
-    with open(path, "w", encoding="utf-8") as handle:
+    directory = os.path.dirname(path)
+    os.makedirs(directory, exist_ok=True)
+    temp_path = f"{path}.{uuid.uuid4().hex}.tmp"
+    with open(temp_path, "w", encoding="utf-8") as handle:
         json.dump(data, handle, indent=2, sort_keys=True)
+    os.replace(temp_path, path)
 
 
 def _submit_runner_job(kind: str, payload: dict):
@@ -220,12 +249,14 @@ def submit_train_job(payload: dict):
 
 
 def list_jobs():
-    with _LOCK:
-        return sorted(
-            (dict(job) for job in _JOBS.values()),
-            key=lambda job: job["created_at"],
-            reverse=True,
-        )
+    jobs = []
+    for entry in os.scandir(JOBS_DIR):
+        if not entry.is_dir():
+            continue
+        job = _load_job_from_disk(entry.name)
+        if job is not None:
+            jobs.append(job)
+    return sorted(jobs, key=lambda job: job["created_at"], reverse=True)
 
 
 def get_job(job_id: str):
