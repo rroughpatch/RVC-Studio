@@ -13,15 +13,18 @@ from lib.utils import gc_collect
 from lib import config
 import torch
 
+
 class Preprocess:
-    def __init__(self, sr, exp_dir, noparallel=True, period=3.0, overlap=.3, max_volume=.95):
+    def __init__(
+        self, sr, exp_dir, noparallel=True, period=3.0, overlap=0.3, max_volume=0.95
+    ):
         self.slicer = Slicer(
             sr=sr,
             threshold=-42,
             min_length=1500,
             min_interval=400,
             hop_size=15,
-            max_sil_kept=500
+            max_sil_kept=500,
         )
         self.sr = sr
         self.bh, self.ah = signal.butter(N=5, Wn=48, btype="high", fs=self.sr)
@@ -38,7 +41,7 @@ class Preprocess:
         os.makedirs(self.gt_wavs_dir, exist_ok=True)
         os.makedirs(self.wavs16k_dir, exist_ok=True)
 
-    def println(self,strr):
+    def println(self, strr):
         # mutex.acquire()
         print(strr)
         with open("%s/preprocess.log" % self.exp_dir, "a+") as f:
@@ -70,7 +73,7 @@ class Preprocess:
 
     def pipeline(self, path, idx0):
         try:
-            audio = load_audio(path, self.sr)
+            audio, _ = load_audio(path, self.sr)
             # zero phased digital filter cause pre-ringing noise...
             # audio = signal.filtfilt(self.bh, self.ah, audio)
             # audio = signal.lfilter(self.bh, self.ah, audio)
@@ -120,8 +123,18 @@ class Preprocess:
         except:
             self.println("Fail. %s" % traceback.format_exc())
 
+
 class FeatureInput(FeatureExtractor):
-    def __init__(self, f0_method, exp_dir, samplerate=16000, hop_size=160, device="cpu", version="v2", if_f0=False):
+    def __init__(
+        self,
+        f0_method,
+        exp_dir,
+        samplerate=16000,
+        hop_size=160,
+        device="cpu",
+        version="v2",
+        if_f0=False,
+    ):
         self.sr = samplerate
         self.hop = hop_size
         self.f0_method = f0_method
@@ -137,16 +150,16 @@ class FeatureInput(FeatureExtractor):
         self.f0_mel_max = 1127 * np.log(1 + self.f0_max / 700)
 
         self.model = load_hubert(config)
-        
+
         super().__init__(samplerate, config, onnx=False)
 
-    def printt(self,strr):
+    def printt(self, strr):
         print(strr)
         with open("%s/extract_f0_feature.log" % self.exp_dir, "a+") as f:
             f.write("%s\n" % strr)
             f.flush()
 
-    def compute_feats(self,x):
+    def compute_feats(self, x):
         feats = torch.from_numpy(x).float()
         if feats.dim() == 2:  # double channels
             feats = feats.mean(-1)
@@ -155,9 +168,9 @@ class FeatureInput(FeatureExtractor):
         padding_mask = torch.BoolTensor(feats.shape).fill_(False)
 
         inputs = {
-            "source": feats.half().to(self.device) 
-                if self.device not in ["mps", "cpu"]
-                else feats.to(self.device),
+            "source": feats.half().to(self.device)
+            if self.device not in ["mps", "cpu"]
+            else feats.to(self.device),
             "padding_mask": padding_mask.to(self.device),
             "output_layer": 9 if self.version == "v1" else 12,  # layer 9
         }
@@ -173,9 +186,9 @@ class FeatureInput(FeatureExtractor):
         else:
             return self.printt("==contains nan==")
 
-    def compute_f0(self,x):
-        return self.get_f0(x,0,self.f0_method,crepe_hop_length=self.hop)
-    
+    def compute_f0(self, x):
+        return self.get_f0(x, 0, self.f0_method, crepe_hop_length=self.hop)
+
     def go(self, paths):
         if len(paths) == 0:
             self.printt("no-f0-todo")
@@ -192,7 +205,7 @@ class FeatureInput(FeatureExtractor):
                         and os.path.exists(opt_path3 + ".npy") == True
                     ):
                         continue
-                    x,_ = load_input_audio(inp_path,self.sr)
+                    x, _ = load_input_audio(inp_path, self.sr)
                     if self.model:
                         feats = self.compute_feats(x)
                         if feats is not None:
@@ -201,7 +214,7 @@ class FeatureInput(FeatureExtractor):
                                 feats,
                                 allow_pickle=False,
                             )  # features
-                            if self.if_f0: # uses pitch
+                            if self.if_f0:  # uses pitch
                                 coarse_pit, featur_pit = self.compute_f0(x)
                                 np.save(
                                     opt_path2,
@@ -214,9 +227,12 @@ class FeatureInput(FeatureExtractor):
                                     allow_pickle=False,
                                 )  # ori
                 except:
-                    self.printt("f0fail-%s-%s-%s" % (idx, inp_path, traceback.format_exc()))
+                    self.printt(
+                        "f0fail-%s-%s-%s" % (idx, inp_path, traceback.format_exc())
+                    )
 
-def preprocess_trainset(inp_root, sr, n_p, exp_dir, period=3.0, overlap=.3):
+
+def preprocess_trainset(inp_root, sr, n_p, exp_dir, period=3.0, overlap=0.3):
     try:
         pp = Preprocess(sr, exp_dir, period=period, overlap=overlap)
         pp.println("start preprocess")
@@ -229,14 +245,23 @@ def preprocess_trainset(inp_root, sr, n_p, exp_dir, period=3.0, overlap=.3):
     except Exception as e:
         return f"Failed to preprocess data: {e}"
 
-def extract_features_trainset(exp_dir,n_p,f0method,device,version,if_f0):
+
+def extract_features_trainset(exp_dir, n_p, f0method, device, version, if_f0):
     try:
-        featureInput = FeatureInput(f0_method=f0method,exp_dir=exp_dir,device=device,version=version,if_f0=if_f0)
+        featureInput = FeatureInput(
+            f0_method=f0method,
+            exp_dir=exp_dir,
+            device=device,
+            version=version,
+            if_f0=if_f0,
+        )
         paths = []
-        inp_root = os.path.join(exp_dir,"1_16k_wavs")
-        opt_root1 = os.path.join(exp_dir,"2a_f0")
-        opt_root2 = os.path.join(exp_dir,"2b-f0nsf")
-        opt_root3 = os.path.join(exp_dir,"3_feature256" if version == "v1" else "3_feature768")
+        inp_root = os.path.join(exp_dir, "1_16k_wavs")
+        opt_root1 = os.path.join(exp_dir, "2a_f0")
+        opt_root2 = os.path.join(exp_dir, "2b-f0nsf")
+        opt_root3 = os.path.join(
+            exp_dir, "3_feature256" if version == "v1" else "3_feature768"
+        )
 
         os.makedirs(opt_root1, exist_ok=True)
         os.makedirs(opt_root2, exist_ok=True)
@@ -246,19 +271,19 @@ def extract_features_trainset(exp_dir,n_p,f0method,device,version,if_f0):
             inp_path = os.path.join(inp_root, name)
             if "spec" in inp_path:
                 continue
-            
-            opt_path1 = os.path.join(opt_root1, ",".join([str(f0method),name]))
-            opt_path2 = os.path.join(opt_root2, ",".join([str(f0method),name])) 
-            opt_path3 = os.path.join(opt_root3, ",".join([str(f0method),name]))
+
+            opt_path1 = os.path.join(opt_root1, ",".join([str(f0method), name]))
+            opt_path2 = os.path.join(opt_root2, ",".join([str(f0method), name]))
+            opt_path3 = os.path.join(opt_root3, ",".join([str(f0method), name]))
             paths.append([inp_path, opt_path1, opt_path2, opt_path3])
 
         ps = []
-        n_p = max(n_p,1)
+        n_p = max(n_p, 1)
         for i in range(n_p):
-            if device=="cuda":
+            if device == "cuda":
                 featureInput.go(paths[i::n_p])
             else:
-                p = Thread(target=featureInput.go,args=(paths[i::n_p],),daemon=True)
+                p = Thread(target=featureInput.go, args=(paths[i::n_p],), daemon=True)
                 ps.append(p)
                 p.start()
 

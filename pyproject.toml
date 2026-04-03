@@ -1,0 +1,84 @@
+[project]
+name = "rvc-studio"
+version = "0.1.0"
+description = "RVC Studio web UI and tooling for voice conversion, training, and AI cover generation"
+readme = "README.md"
+requires-python = ">=3.10,<3.11"
+dependencies = [
+    "joblib>=1.1.0",
+    "numba==0.56.4",
+    "numpy==1.23.5",
+    "scipy==1.9.3",
+    "librosa==0.9.1",
+    "llvmlite==0.39.0",
+    "fairseq==0.12.2",
+    "faiss-cpu==1.7.3",
+    "pydub>=0.25.1",
+    "soundfile>=0.12.1",
+    "ffmpeg-python>=0.2.0",
+    "jinja2>=3.1.2",
+    "matplotlib>=3.7.0",
+    "matplotlib-inline>=0.1.3",
+    "praat-parselmouth>=0.4.2",
+    "pillow>=9.1.1",
+    "resampy>=0.4.2",
+    "tqdm>=4.63.1",
+    "tornado>=6.1",
+    "werkzeug>=2.2.3",
+    "uc-micro-py>=1.0.1",
+    "sympy>=1.11.1",
+    "tabulate>=0.8.10",
+    "pyyaml>=6.0",
+    "pyasn1>=0.4.8",
+    "pyasn1-modules>=0.2.8",
+    "fsspec>=2022.11.0",
+    "absl-py>=1.2.0",
+    "audioread==3.0.0",
+    "uvicorn>=0.21.1",
+    "colorama>=0.4.5",
+    "pyworld==0.3.2",
+    "httpx==0.23.0",
+    "onnxruntime-gpu==1.15.0",
+    "onnxruntime==1.15.0",
+    "ffmpy==0.3.1",
+    "torch==2.0.1+cu118",
+    "torchaudio==2.0.2+cu118",
+    "torchcrepe",
+    "urllib3==1.26.16",
+    "setuptools<81",
+    "scikit-learn==1.3.0",
+    "tensorboardx",
+    "tensorboard",
+    "streamlit==1.26.0",
+    "json5",
+    "markdown",
+    "cython",
+    "pytube",
+    "lightning==2.0.8",
+    "samplerate",
+    "fastapi[all]>=0.103.1",
+    "pyaudio",
+    "transformers==4.32.1",
+    "num2words",
+    "sentencepiece",
+    "speechbrain==0.5.15",
+    "accelerate==0.22.0",
+    "edge-tts==6.1.8",
+    "emoji",
+    "monotonic-align",
+    "unidecode==1.1.1",
+    "phonemizer==2.2.1",
+    "webrtcvad",
+]
+
+[tool.uv]
+package = false
+
+[tool.uv.sources]
+torch = { index = "pytorch-cu118" }
+torchaudio = { index = "pytorch-cu118" }
+
+[[tool.uv.index]]
+name = "pytorch-cu118"
+url = "https://download.pytorch.org/whl/cu118"
+explicit = true
