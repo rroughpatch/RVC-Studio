@@ -1,14 +1,13 @@
 import sys
 import os
 import multiprocessing
-from pathlib import Path
+from math import gcd
 from threading import Thread
 from scipy import signal
 import numpy as np
 import traceback
 from lib.model_utils import load_hubert
 from lib.slicer2 import Slicer
-import librosa
 from scipy.io import wavfile
 from lib.audio import load_audio
 from pitch_extraction import FeatureExtractor
@@ -16,6 +15,15 @@ from lib.audio import load_input_audio
 from lib.utils import gc_collect
 from lib import config
 import torch
+
+
+def get_input_files(inp_root):
+    with os.scandir(inp_root) as entries:
+        return [
+            entry.path
+            for entry in sorted(entries, key=lambda candidate: candidate.name)
+            if entry.is_file()
+        ]
 
 
 class Preprocess:
@@ -38,6 +46,9 @@ class Preprocess:
         self.max = max_volume
         self.alpha = 0.75
         self.exp_dir = exp_dir
+        resample_gcd = gcd(self.sr, 16000)
+        self.resample_up = 16000 // resample_gcd
+        self.resample_down = self.sr // resample_gcd
         self.gt_wavs_dir = "%s/0_gt_wavs" % exp_dir
         self.wavs16k_dir = "%s/1_16k_wavs" % exp_dir
         self.noparallel = noparallel
@@ -66,9 +77,11 @@ class Preprocess:
             self.sr,
             tmp_audio.astype(np.float32),
         )
-        tmp_audio = librosa.resample(
-            tmp_audio, orig_sr=self.sr, target_sr=16000
-        )  # , res_type="soxr_vhq"
+        tmp_audio = signal.resample_poly(
+            tmp_audio,
+            up=self.resample_up,
+            down=self.resample_down,
+        )
         wavfile.write(
             "%s/%s_%s.wav" % (self.wavs16k_dir, idx0, idx1),
             16000,
@@ -107,10 +120,7 @@ class Preprocess:
 
     def pipeline_mp_inp_dir(self, inp_root, n_p):
         try:
-            infos = [
-                ("%s/%s" % (inp_root, name), idx)
-                for idx, name in enumerate(sorted(list(os.listdir(inp_root))))
-            ]
+            infos = [(path, idx) for idx, path in enumerate(get_input_files(inp_root))]
             if len(infos) == 0:
                 self.println("No input files found.")
                 return
@@ -253,8 +263,9 @@ def preprocess_trainset(inp_root, sr, n_p, exp_dir, period=3.0, overlap=0.3):
         )
         pp.println("start preprocess")
         pp.println(sys.argv)
+        input_files = get_input_files(inp_root)
         pp.println(
-            f"preprocess config: files={len(list(Path(inp_root).iterdir()))}, "
+            f"preprocess config: files={len(input_files)}, "
             f"workers={max(int(n_p), 1)}, parallel={not pp.noparallel}"
         )
         pp.pipeline_mp_inp_dir(inp_root, n_p)
