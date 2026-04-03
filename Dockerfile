@@ -1,6 +1,8 @@
 FROM python:3.10-slim-bullseye
 
 WORKDIR /app
+
+COPY --from=ghcr.io/astral-sh/uv:0.11.3 /uv /uvx /bin/
  
 RUN --mount=type=cache,target=/root/.cache apt-get update && \
     apt-get install -y -qq \
@@ -13,8 +15,9 @@ RUN --mount=type=cache,target=/root/.cache apt-get update && \
     portaudio19-dev \
     python3-pyaudio
 
-COPY ./requirements.txt ./requirements.txt
-RUN --mount=type=cache,target=/root/.cache pip install -r requirements.txt
+COPY ./pyproject.toml ./uv.lock ./
+ENV UV_LINK_MODE=copy
+RUN --mount=type=cache,target=/root/.cache/uv uv sync --frozen --no-install-project
 COPY . .
 
 VOLUME ["/app/models", "/app/output", "/app/datasets", "/app/logs", "/app/songs", "/app/.cache" ]
@@ -29,6 +32,6 @@ EXPOSE 8501
 # Tensorboard server
 EXPOSE 6006
 
-ENV PATH="$PATH:/app/:/"
+ENV PATH="/app/.venv/bin:$PATH:/app/:/"
 
 ENTRYPOINT ["streamlit", "run", "Home.py", "--server.port=8501", "--server.address=0.0.0.0"]

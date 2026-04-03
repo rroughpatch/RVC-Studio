@@ -19,21 +19,23 @@ This project provides a comprehensive platform for training RVC models and gener
 * Real-time VC interface: convert your voice using your favourite RVC model.
 
 ## Requirements
-- Python 3.6 or higher (developed and tested on v3.8.17)
-- Pip
-- Virtualenv or conda package manager
+- Python 3.10
+- [uv](https://docs.astral.sh/uv/)
+- System packages for audio and TTS support:
+  `ffmpeg`, `espeak`, `libportaudio2`, `portaudio19-dev`, `python3-dev`
 
 ## Easy Install
 1. Clone this repository or download the zip file and extract it.
-2. Double-click "conda-installer.bat" to install the latest version of [conda package manager](https://docs.conda.io/projects/miniconda/en/latest/)
-3. Double-click "conda-start.bat" (if you skipped step 2.)
+2. Double-click `uv-install.bat` on Windows to install `uv` if needed, create the local `.venv`, and launch the app.
 
 ## Manual Installation
 1. Clone this repository or download the zip file.
-2. Navigate to the project directory and create a virtual environment with the command `virtualenv venv`.
-3. Activate the virtual environment with the command `source venv/bin/activate` on Linux/Mac or `venv\Scripts\activate` on Windows. Or use `conda create -n RVC-Studio & conda activate RVC-Studio` if you're using conda package manager.
-4. Install the required packages with the command `pip install -r requirements.txt`.
-5. Run the streamlit app with the command `streamlit run Home.py`.
+2. Install `uv` if it is not already available: https://docs.astral.sh/uv/getting-started/installation/
+3. Navigate to the project directory and install Python 3.10 with `uv python install 3.10`.
+4. Sync the project environment with `uv sync`.
+5. Run the Streamlit app with `uv run streamlit run Home.py`.
+
+To start the API server directly, use `uv run python api.py`.
 
 Or run it in [Google Colab](https://colab.research.google.com/github/SayanoAI/RVC-Studio/blob/master/RVC_Studio.ipynb)
 
