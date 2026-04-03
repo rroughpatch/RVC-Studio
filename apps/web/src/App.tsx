@@ -32,9 +32,9 @@ export default function App() {
               Browser-first shell for the Bun and Elysia migration.
             </h1>
             <p className="mt-5 max-w-2xl text-base leading-7 text-slate-300 md:text-lg">
-              This workspace now has dedicated app and service boundaries. The UI
-              moves into React, the local control plane moves into Elysia, and the
-              Python stack is reduced to the model-heavy audio service.
+              This workspace now has dedicated app and service boundaries. The UI moves into React,
+              the local control plane moves into Elysia, and the Python stack is reduced to the
+              model-heavy audio service.
             </p>
             <div className="mt-8 flex flex-wrap gap-3 text-sm text-slate-200">
               <span className="rounded-full border border-amber-300/25 bg-amber-300/10 px-4 py-2">
@@ -50,9 +50,7 @@ export default function App() {
           </div>
 
           <aside className="rounded-[2rem] border border-white/10 bg-slate-950/50 p-6 shadow-[0_12px_40px_rgba(0,0,0,0.3)]">
-            <p className="text-sm font-medium uppercase tracking-[0.28em] text-slate-400">
-              Next
-            </p>
+            <p className="text-sm font-medium uppercase tracking-[0.28em] text-slate-400">Next</p>
             <ol className="mt-5 space-y-4 text-sm leading-6 text-slate-300">
               <li>Wire the web app to the gateway health and metadata routes.</li>
               <li>Expose file uploads, model lists, and inference jobs through Elysia.</li>

@@ -6,6 +6,7 @@
     "services/*",
     "packages/*"
   ],
+  "type": "module",
   "scripts": {
     "dev": "vp run --parallel --filter @rvc-studio/web --filter @rvc-studio/gateway dev",
     "dev:web": "vp run --filter @rvc-studio/web dev",
@@ -19,19 +20,20 @@
     "fmt": "vp fmt",
     "fmt:check": "vp fmt --check"
   },
-  "packageManager": "pnpm@10.33.0",
-  "catalog": {
-    "typescript": "^6.0.2",
-    "vite": "npm:@voidzero-dev/vite-plus-core@latest",
-    "vitest": "npm:@voidzero-dev/vite-plus-test@latest",
-    "vite-plus": "latest"
+  "devDependencies": {
+    "vite-plus": "catalog:"
   },
   "overrides": {
     "typescript": "catalog:",
     "vite": "catalog:",
     "vitest": "catalog:"
   },
-  "devDependencies": {
-    "vite-plus": "catalog:"
+  "packageManager": "bun@1.3.10",
+  "catalog": {
+    "typescript": "^6.0.2",
+    "vite": "npm:@voidzero-dev/vite-plus-core@latest",
+    "vitest": "npm:@voidzero-dev/vite-plus-test@latest",
+    "vite-plus": "latest",
+    "@types/bun": "^1.3.11"
   }
 }
