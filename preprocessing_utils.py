@@ -1,10 +1,13 @@
-import sys, os, multiprocessing
+import sys
+import os
+import multiprocessing
 from threading import Thread
 from scipy import signal
-import numpy as np, os, traceback
+import numpy as np
+import traceback
 from lib.model_utils import load_hubert
 from lib.slicer2 import Slicer
-import librosa, traceback
+import librosa
 from scipy.io import wavfile
 from lib.audio import load_audio
 from pitch_extraction import FeatureExtractor
@@ -200,9 +203,9 @@ class FeatureInput(FeatureExtractor):
                     # if idx % n == 0:
                     #     self.printt("f0ing,now-%s,all-%s,-%s" % (idx, len(paths), inp_path))
                     if (
-                        os.path.exists(opt_path1 + ".npy") == True
-                        and os.path.exists(opt_path2 + ".npy") == True
-                        and os.path.exists(opt_path3 + ".npy") == True
+                        os.path.exists(opt_path1 + ".npy")
+                        and os.path.exists(opt_path2 + ".npy")
+                        and os.path.exists(opt_path3 + ".npy")
                     ):
                         continue
                     x, _ = load_input_audio(inp_path, self.sr)

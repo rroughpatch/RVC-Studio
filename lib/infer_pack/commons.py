@@ -1,7 +1,5 @@
 import math
-import numpy as np
 import torch
-from torch import nn
 from torch.nn import functional as F
 
 
@@ -20,10 +18,12 @@ def convert_pad_shape(pad_shape):
     pad_shape = [item for sublist in l for item in sublist]
     return pad_shape
 
+
 def intersperse(lst, item):
-  result = [item] * (len(lst) * 2 + 1)
-  result[1::2] = lst
-  return result
+    result = [item] * (len(lst) * 2 + 1)
+    result[1::2] = lst
+    return result
+
 
 def kl_divergence(m_p, logs_p, m_q, logs_q):
     """KL(P||Q)"""
@@ -139,7 +139,6 @@ def generate_path(duration, mask):
     duration: [b, 1, t_x]
     mask: [b, 1, t_y, t_x]
     """
-    device = duration.device
 
     b, _, t_y, t_x = mask.shape
     cum_duration = torch.cumsum(duration, -1)

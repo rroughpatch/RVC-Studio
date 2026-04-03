@@ -1,5 +1,6 @@
 import os
 import time
+from typing import Any
 import numpy as np
 import pyaudio
 import threading
@@ -10,6 +11,7 @@ from rvc_for_realtime import RVC
 from lib.audio import remix_audio
 
 from lib.utils import ObjectNamespace, gc_collect
+
 
 # Define a class that can record and play audio chunks in real time
 class RecorderPlayback:
@@ -30,14 +32,21 @@ class RecorderPlayback:
 
         # Create a flag to indicate if the recording is active
         self.recording = False
+        self.record_thread: threading.Thread | None = None
 
     def update_options(self, options):
         with self.lock:
             self.rvc_options.update(options)
 
-    def start(self, voice_model, config, device,
-              input_device_index = None, output_device_index = None,
-              **options):
+    def start(
+        self,
+        voice_model,
+        config,
+        device,
+        input_device_index=None,
+        output_device_index=None,
+        **options,
+    ):
         torch.cuda.empty_cache()
         self.config = config
         self.device = device
@@ -47,12 +56,12 @@ class RecorderPlayback:
         self.voice_model = voice_model
         self.rvc_model = self.load_rvc_model(self.voice_model, self.config, self.device)
         self.tgt_sr = self.rvc_model.tgt_sr
-        
+
         # Set the flag to True
         self.recording = True
 
         # Create a thread for recording
-        self.record_thread = threading.Thread(target=self.record,daemon=False)
+        self.record_thread = threading.Thread(target=self.record, daemon=False)
 
         if not self.record_thread.is_alive():
             self.record_thread.start()
@@ -62,7 +71,8 @@ class RecorderPlayback:
         self.recording = False
 
         # Wait for the threads to finish
-        self.record_thread.join(1)
+        if self.record_thread is not None:
+            self.record_thread.join(1)
         self.record_thread = None
 
     def __del__(self):
@@ -85,46 +95,56 @@ class RecorderPlayback:
             input_device_index=self.input_device_index,
             output_device_index=self.output_device_index,
             stream_callback=self.process_audio,
-            frames_per_buffer=self.tgt_sr
+            frames_per_buffer=self.tgt_sr,
         )
         self.io_stream.start_stream()
         # Loop until the flag is False
         with self.lock:
             while self.recording:
-                time.sleep(1.)
+                time.sleep(1.0)
         print("stopped listening")
         self.io_stream.stop_stream()
         self.io_stream.close()
-    
+
     def process_audio(self, data, frame_count, *args, **kwargs):
         # Process the data (for example, apply some filter or effect)
-        audio =  np.frombuffer(data, dtype=np.float32)
+        audio = np.frombuffer(data, dtype=np.float32)
+        model: Any = self.rvc_model
 
-        if np.std(audio)>self.silence_threshold:
-            audio = remix_audio((audio,self.tgt_sr),target_sr=self.sr)[0]
+        if model is not None and np.std(audio) > self.silence_threshold:
+            audio = remix_audio((audio, self.tgt_sr), target_sr=self.sr)[0]
 
-            # if self.is_speech(audio):            
-            audio = self.rvc_model.vc(audio,**self.rvc_options)
+            # if self.is_speech(audio):
+            audio = model.vc(audio, **self.rvc_options)
 
-            if len(audio)<frame_count:
-                audio = np.pad(audio,(0,frame_count),mode="linear_ramp",end_values=0)
-        else: audio = np.zeros(frame_count)
-            
+            if len(audio) < frame_count:
+                audio = np.pad(
+                    audio, (0, frame_count), mode="linear_ramp", end_values=0
+                )
+        else:
+            audio = np.zeros(frame_count)
+
         return (audio, pyaudio.paContinue)
-    
-    def load_rvc_model(self,model_name,config,device):
+
+    def load_rvc_model(self, model_name, config, device):
         print(f"loading {model_name}...")
-        if self.rvc_model is None or self.rvc_model.model_name!=model_name:
-            if self.rvc_model: del self.rvc_model
-            self.rvc_model = RVC(os.path.join(BASE_MODELS_DIR,"RVC",f"{model_name}.pth"),config=config,device=device)
+        if self.rvc_model is None or self.rvc_model.model_name != model_name:
+            if self.rvc_model:
+                del self.rvc_model
+            self.rvc_model = RVC(
+                os.path.join(BASE_MODELS_DIR, "RVC", f"{model_name}.pth"),
+                config=config,
+                device=device,
+            )
             gc_collect()
         print(f"{model_name} finished loading")
         return self.rvc_model
-    
+
     def is_speech(self, audio):
-        length = int(self.sr * .03)
-        slices = int(len(audio)/length)+1
-        
-        for segment in np.array_split(audio,slices):
-            if self.vad.is_speech(segment.tobytes(),self.sr,length=length): return True
+        length = int(self.sr * 0.03)
+        slices = int(len(audio) / length) + 1
+
+        for segment in np.array_split(audio, slices):
+            if self.vad.is_speech(segment.tobytes(), self.sr, length=length):
+                return True
         return False

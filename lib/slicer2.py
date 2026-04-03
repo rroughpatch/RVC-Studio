@@ -1,6 +1,7 @@
 import numpy as np
 from scipy import signal
 
+
 # This function is obtained from librosa.
 def get_rms(
     y,
@@ -53,7 +54,7 @@ class Slicer:
             raise ValueError(
                 "The following condition must be satisfied: max_sil_kept >= hop_size"
             )
-        min_interval = sr * min_interval / 1000
+        min_interval = int(sr * min_interval / 1000)
         self.threshold = 10 ** (threshold / 20.0)
         self.hop_size = round(sr * hop_size / 1000)
         self.win_size = min(round(min_interval), 4 * self.hop_size)
@@ -252,7 +253,7 @@ def main():
         soundfile.write(
             os.path.join(
                 out,
-                f"%s_%d.wav"
+                "%s_%d.wav"
                 % (os.path.basename(args.audio).rsplit(".", maxsplit=1)[0], i),
             ),
             chunk,

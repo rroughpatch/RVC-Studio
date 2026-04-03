@@ -2,6 +2,7 @@ import json
 import locale
 import os
 
+
 class I18nAuto:
     def __init__(self, language=None):
         if language in ["Auto", None]:
