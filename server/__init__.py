@@ -1,10 +1,3 @@
-from functools import lru_cache
-from lib import ObjectNamespace
+from services.ml.server import STATUS, get_status
 
-
-@lru_cache
-def get_status():
-    return ObjectNamespace(status="OK", rvc=ObjectNamespace())
-
-
-STATUS = get_status()
+__all__ = ["STATUS", "get_status"]

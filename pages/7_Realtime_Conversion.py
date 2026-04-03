@@ -4,10 +4,9 @@ import os
 import streamlit as st
 # from twilio.rest import Client
 
-from vc_infer_pipeline import get_vc
-
 from webui import DEVICE_OPTIONS
 from lib import i18n, config
+from services.ml.vc_infer_pipeline import get_vc
 from webui.api import get_rvc_models
 from webui.components import (
     initial_voice_conversion_params,

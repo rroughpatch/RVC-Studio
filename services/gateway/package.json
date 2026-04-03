@@ -1,0 +1,22 @@
+{
+  "name": "@rvc-studio/gateway",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "bun --watch src/index.ts",
+    "start": "bun src/index.ts",
+    "build": "bun build ./src/index.ts --outdir dist --target bun",
+    "typecheck": "tsc --noEmit",
+    "test": "vp test --run --passWithNoTests"
+  },
+  "dependencies": {
+    "@elysiajs/cors": "^1.4.1",
+    "@elysiajs/openapi": "^1.4.14",
+    "@rvc-studio/shared": "workspace:*",
+    "elysia": "^1.4.28"
+  },
+  "devDependencies": {
+    "typescript": "catalog:",
+    "vite-plus": "catalog:"
+  }
+}

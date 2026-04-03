@@ -3,6 +3,21 @@
 # RVC Studio
 This project provides a comprehensive platform for training RVC models and generating AI voice covers. Use the app to download the required files before using or manually download them here: https://huggingface.co/datasets/SayanoAI/RVC-Studio/tree/main
 
+## Monorepo Migration
+This repository is being restructured into a browser-first monorepo:
+
+- `apps/web`: Vite + React frontend
+- `services/gateway`: Bun + Elysia local API and orchestration layer
+- `services/ml`: Python compute service for RVC, UVR, TTS, and training
+- `packages/shared`: shared TypeScript types and constants
+
+Current status:
+
+- The workspace now uses Vite+ (`vp`) for root task orchestration and staged-file hooks.
+- Package-level runtime commands can still use Bun where that makes sense.
+- The existing Python runtime still lives at the repo root for compatibility.
+- `models`, `songs`, `output`, `logs`, `datasets`, and `configs` remain top-level data directories during migration.
+
 ## Features
 * Youtube music downloader: download any music video from Youtube as an mp3 file with just one click.
 * 1-click AI song covers: easily create AI song covers using RVC.
@@ -35,14 +50,14 @@ This project provides a comprehensive platform for training RVC models and gener
 4. Sync the project environment with `uv sync`.
 5. Run the Streamlit app with `uv run streamlit run Home.py`.
 
-To start the API server directly, use `uv run python api.py`.
+To start the ML API service directly, use `uv run python -m services.ml`.
 
 Or run it in [Google Colab](https://colab.research.google.com/github/SayanoAI/RVC-Studio/blob/master/RVC_Studio.ipynb)
 
 ## Instructions for Inference page
 1. Download all the required models on the webui page or here: https://huggingface.co/datasets/SayanoAI/RVC-Studio/tree/main
 2. Put your favourite songs in the ./songs folder
-3. Navigate to "RVC Server" page and start the server
+3. Navigate to "RVC Server" page and start the ML service
 4. Navigate to "Inference" page and press "Refresh Data" button
 5. Select a song (only wav/flac/ogg/mp3 are supported for now)
 6. Select a voice model (put your RVC v2 models in ./models/RVC/ and index file in ./models/RVC/.index/)
