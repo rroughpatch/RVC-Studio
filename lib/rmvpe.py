@@ -1,10 +1,8 @@
-import torch, numpy as np, pdb
+import torch
+import numpy as np
 import torch.nn as nn
 import torch.nn.functional as F
 
-import torch, pdb
-import numpy as np
-import torch.nn.functional as F
 from scipy.signal import get_window
 from librosa.util import pad_center, tiny, normalize
 
@@ -531,7 +529,7 @@ class MelSpectrogram(torch.nn.Module):
         # magnitude = torch.sqrt(fft.real.pow(2) + fft.imag.pow(2))
         # print(1111111111)
         # print(222222222222222,audio.device,self.is_half)
-        if hasattr(self, "stft") == False:
+        if not hasattr(self, "stft"):
             # print(n_fft_new,hop_length_new,win_length_new,audio.shape)
             self.stft = STFT(
                 filter_length=n_fft_new,
@@ -549,7 +547,7 @@ class MelSpectrogram(torch.nn.Module):
                 magnitude = F.pad(magnitude, (0, 0, 0, size - resize))
             magnitude = magnitude[:, :size, :] * self.win_length / win_length_new
         mel_output = torch.matmul(self.mel_basis, magnitude)
-        if self.is_half == True:
+        if self.is_half:
             mel_output = mel_output.half()
         log_mel_spec = torch.log(torch.clamp(mel_output, min=self.clamp))
         # print(log_mel_spec.device.type)
@@ -580,7 +578,7 @@ class RMVPE:
             ckpt = torch.load(model_path, map_location="cpu")
             model.load_state_dict(ckpt)
             model.eval()
-            if is_half == True:
+            if is_half:
                 model = model.half()
             self.model = model
             self.model = self.model.to(device)
@@ -592,7 +590,7 @@ class RMVPE:
             n_frames = mel.shape[-1]
             padding = min(32 * ((n_frames - 1) // 32 + 1) - n_frames, n_frames)
             mel = F.pad(mel, (0, padding), mode="reflect")
-            #if "privateuseone" in str(self.device):
+            # if "privateuseone" in str(self.device):
             if self.onnx:
                 onnx_input_name = self.model.get_inputs()[0].name
                 onnx_outputs_names = self.model.get_outputs()[0].name
@@ -612,49 +610,50 @@ class RMVPE:
         return f0
 
     def infer_from_audio(self, audio, thred=0.03):
-        if self.onnx == False:
+        if not self.onnx:
             audio = torch.from_numpy(audio).float().to(self.device).unsqueeze(0)
             mel = self.mel_extractor(audio, center=True)
             hidden = self.mel2hidden(mel)
             hidden = hidden.squeeze(0).cpu().numpy()
-            if self.is_half == True:
+            if self.is_half:
                 hidden = hidden.astype("float32")
             f0 = self.decode(hidden, thred=thred)
             return f0
         else:
             # torch.cuda.synchronize()
-            t0 = ttime()
+            ttime()
             mel = self.mel_extractor(
-                torch.from_numpy(audio).float().to(self.device).unsqueeze(0), center=True
+                torch.from_numpy(audio).float().to(self.device).unsqueeze(0),
+                center=True,
             )
             # print(123123123,mel.device.type)
             # torch.cuda.synchronize()
-            t1 = ttime()
+            ttime()
             hidden = self.mel2hidden(mel)
             # torch.cuda.synchronize()
-            t2 = ttime()
+            ttime()
             # print(234234,hidden.device.type)
             if not self.onnx:
                 hidden = hidden.squeeze(0).cpu().numpy()
             else:
                 hidden = hidden[0]
-            if self.is_half == True:
+            if self.is_half:
                 hidden = hidden.astype("float32")
             f0 = self.decode(hidden, thred=thred)
             # torch.cuda.synchronize()
-            t3 = ttime()
+            ttime()
             # print("hmvpe:%s\t%s\t%s\t%s"%(t1-t0,t2-t1,t3-t2,t3-t0))
             return f0
-    
+
     def infer_from_audio_with_pitch(self, audio, thred=0.03, f0_min=50, f0_max=1100):
         audio = torch.from_numpy(audio).float().to(self.device).unsqueeze(0)
         mel = self.mel_extractor(audio, center=True)
         hidden = self.mel2hidden(mel)
         hidden = hidden.squeeze(0).cpu().numpy()
-        if self.is_half == True:
+        if self.is_half:
             hidden = hidden.astype("float32")
         f0 = self.decode(hidden, thred=thred)
-        f0[(f0 < f0_min) | (f0 > f0_max)] = 0  
+        f0[(f0 < f0_min) | (f0 > f0_max)] = 0
         return f0
 
     def to_local_average_cents(self, salience, thred=0.05):

@@ -1,5 +1,6 @@
-import os
 import argparse
+import importlib
+import os
 import sys
 import torch
 from multiprocessing import cpu_count
@@ -142,51 +143,45 @@ class Config:
             x_max = 32
         if self.dml:
             print("use DirectML instead")
-            if (
-                os.path.exists(
-                    "runtime\Lib\site-packages\onnxruntime\capi\DirectML.dll"
-                )
-                == False
+            if not os.path.exists(
+                "runtime\Lib\site-packages\onnxruntime\capi\DirectML.dll"
             ):
                 try:
                     os.rename(
                         "runtime\Lib\site-packages\onnxruntime",
                         "runtime\Lib\site-packages\onnxruntime-cuda",
                     )
-                except:
+                except OSError:
                     pass
                 try:
                     os.rename(
                         "runtime\Lib\site-packages\onnxruntime-dml",
                         "runtime\Lib\site-packages\onnxruntime",
                     )
-                except:
+                except OSError:
                     pass
-            import torch_directml
+            torch_directml = importlib.import_module("torch_directml")
 
             self.device = torch_directml.device(torch_directml.default_device())
             self.is_half = False
         else:
             if self.instead:
                 print(f"use {self.instead} instead")
-            if (
-                os.path.exists(
-                    "runtime\Lib\site-packages\onnxruntime\capi\onnxruntime_providers_cuda.dll"
-                )
-                == False
+            if not os.path.exists(
+                "runtime\Lib\site-packages\onnxruntime\capi\onnxruntime_providers_cuda.dll"
             ):
                 try:
                     os.rename(
                         "runtime\Lib\site-packages\onnxruntime",
                         "runtime\Lib\site-packages\onnxruntime-dml",
                     )
-                except:
+                except OSError:
                     pass
                 try:
                     os.rename(
                         "runtime\Lib\site-packages\onnxruntime-cuda",
                         "runtime\Lib\site-packages\onnxruntime",
                     )
-                except:
+                except OSError:
                     pass
         return x_pad, x_query, x_center, x_max

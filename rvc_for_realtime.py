@@ -13,7 +13,7 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 
-if config.dml == True:
+if config.dml:
 
     def forward_dml(ctx, x, scale):
         ctx.scale = scale
@@ -34,23 +34,31 @@ class RVC(FeatureExtractor):
         if_f0 = cpt.get("f0", 1)
         version = cpt.get("version", "v1")
         self.sid = 0
-        
+
         if version == "v1":
             if if_f0 == 1:
                 from lib.infer_pack.models import SynthesizerTrnMs256NSFsid
-                net_g = SynthesizerTrnMs256NSFsid(*cpt["config"], is_half=config.is_half)
+
+                net_g = SynthesizerTrnMs256NSFsid(
+                    *cpt["config"], is_half=config.is_half
+                )
             else:
                 from lib.infer_pack.models import SynthesizerTrnMs256NSFsid_nono
+
                 net_g = SynthesizerTrnMs256NSFsid_nono(*cpt["config"])
         elif version == "v2":
             if if_f0 == 1:
                 from lib.infer_pack.models import SynthesizerTrnMs768NSFsid
-                net_g = SynthesizerTrnMs768NSFsid(*cpt["config"], is_half=config.is_half)
+
+                net_g = SynthesizerTrnMs768NSFsid(
+                    *cpt["config"], is_half=config.is_half
+                )
             else:
                 from lib.infer_pack.models import SynthesizerTrnMs768NSFsid_nono
+
                 net_g = SynthesizerTrnMs768NSFsid_nono(*cpt["config"])
         del net_g.enc_q
-        
+
         net_g.load_state_dict(cpt["weight"], strict=False)
         net_g.eval().to(device if device else config.device)
         if config.is_half:
@@ -59,7 +67,12 @@ class RVC(FeatureExtractor):
             net_g = net_g.float()
         hubert_model = load_hubert(config)
         model_name = os.path.basename(model_path).split(".")[0]
-        index_files = get_filenames(root=os.path.join(BASE_MODELS_DIR,"RVC"),folder=".index",exts=["index"],name_filters=[model_name])
+        index_files = get_filenames(
+            root=os.path.join(BASE_MODELS_DIR, "RVC"),
+            folder=".index",
+            exts=["index"],
+            name_filters=[model_name],
+        )
         file_index = index_files.pop() if len(index_files) else ""
 
         self.cpt = cpt
@@ -70,7 +83,7 @@ class RVC(FeatureExtractor):
         self.tgt_sr = tgt_sr
         self.if_f0 = if_f0
         self.version = version
-        super().__init__(tgt_sr, config, onnx) # initiate Feature Extraction
+        super().__init__(tgt_sr, config, onnx)  # initiate Feature Extraction
 
     def __del__(self):
         super().__del__()
@@ -79,10 +92,10 @@ class RVC(FeatureExtractor):
 
     # def process_input(self, x: np.ndarray, **kwargs) -> np.ndarray:
     def vc(self, x: np.ndarray, **kwargs) -> np.ndarray:
-        index_rate = kwargs.pop("index_rate",.5)
-        protect = kwargs.pop("protect",.5)
-        rms_mix_rate = kwargs.pop("rms_mix_rate",1.)
-    
+        index_rate = kwargs.pop("index_rate", 0.5)
+        protect = kwargs.pop("protect", 0.5)
+        rms_mix_rate = kwargs.pop("rms_mix_rate", 1.0)
+
         feats = torch.from_numpy(x.copy())
         feats = feats.view(1, -1)
         if config.is_half:
@@ -100,11 +113,15 @@ class RVC(FeatureExtractor):
             }
             logits = self.hubert_model.extract_features(**inputs)
             feats = (
-                self.hubert_model.final_proj(logits[0]) if self.version == "v1" else logits[0]
+                self.hubert_model.final_proj(logits[0])
+                if self.version == "v1"
+                else logits[0]
             )
 
         if protect < 0.5 and self.if_f0:
-            feats0 = F.interpolate(feats.permute(0, 2, 1), scale_factor=2).permute(0, 2, 1)
+            feats0 = F.interpolate(feats.permute(0, 2, 1), scale_factor=2).permute(
+                0, 2, 1
+            )
 
         if self.index is not None and self.big_npy is not None and index_rate != 0:
             npy = feats[0].cpu().numpy()
@@ -142,24 +159,23 @@ class RVC(FeatureExtractor):
         else:
             pitch, pitchf = None, None
             p_len = feats.shape[1]
-       
+
         p_len = torch.LongTensor([p_len]).to(self.device)
         sid = torch.LongTensor([self.sid]).to(self.device)
         with torch.no_grad():
-            if self.is_half: feats = feats.to(torch.half)
+            if self.is_half:
+                feats = feats.to(torch.half)
             if self.if_f0 == 1:
                 # print("process_output",feats,p_len,pitch,pitchf)
                 # print(12222222222,feats.dtype,pitch.dtype,pitchf.dtype,sid.dtype,self.is_half)
-                infered_audio = (
-                    self.net_g.infer(feats, p_len, pitch, pitchf, sid)[0][0, 0].data
-                )
+                infered_audio = self.net_g.infer(feats, p_len, pitch, pitchf, sid)[0][
+                    0, 0
+                ].data
             else:
-                infered_audio = (
-                    self.net_g.infer(feats, p_len, sid)[0][0, 0].data
-                )
+                infered_audio = self.net_g.infer(feats, p_len, sid)[0][0, 0].data
 
             audio_opt = infered_audio.cpu().float().numpy()
-            if rms_mix_rate < 1.:
+            if rms_mix_rate < 1.0:
                 audio_opt = change_rms(x, self.sr, audio_opt, self.tgt_sr, rms_mix_rate)
 
             del feats, p_len, sid, pitch, pitchf, infered_audio

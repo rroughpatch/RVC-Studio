@@ -4,12 +4,20 @@ import os
 import faiss
 import numpy as np
 from scipy import signal
-import torch, torchcrepe, pyworld
+import torch
+import torchcrepe
+import pyworld
 
 from lib.rmvpe import RMVPE
 from lib.audio import autotune_f0, pad_audio
 from lib import BASE_MODELS_DIR
-from lib.utils import gc_collect, get_merge_func, get_optimal_threads, get_optimal_torch_device
+from lib.utils import (
+    gc_collect,
+    get_merge_func,
+    get_optimal_threads,
+    get_optimal_torch_device,
+)
+
 
 class FeatureExtractor:
     def __init__(self, tgt_sr, config, onnx=False):
@@ -20,7 +28,7 @@ class FeatureExtractor:
             config.x_max,
             config.is_half,
         )
-        
+
         self.sr = 16000  # hubert输入采样率
         self.window = 160  # 每帧点数
         self.t_pad = self.sr * self.x_pad  # 每条前后pad时间
@@ -39,23 +47,24 @@ class FeatureExtractor:
             "rmvpe_onnx": self.get_rmvpe,
             "rmvpe+": self.get_pitch_dependant_rmvpe,
             "crepe": self.get_f0_official_crepe_computation,
-            "crepe-tiny": partial(self.get_f0_official_crepe_computation, model='model'),
+            "crepe-tiny": partial(
+                self.get_f0_official_crepe_computation, model="model"
+            ),
             "mangio-crepe": self.get_f0_crepe_computation,
-            "mangio-crepe-tiny": partial(self.get_f0_crepe_computation, model='model'),
-            
+            "mangio-crepe-tiny": partial(self.get_f0_crepe_computation, model="model"),
         }
-        
+
     def __del__(self):
-        if hasattr(self,"model_rmvpe"):
+        if hasattr(self, "model_rmvpe"):
             del self.model_rmvpe
             gc_collect()
 
     def load_index(self, file_index):
         try:
-            if not type(file_index)==str: # loading file index to save time
-                    print("Using preloaded file index.")
-                    index = file_index
-                    big_npy = index.reconstruct_n(0, index.ntotal)
+            if not type(file_index) == str:  # loading file index to save time
+                print("Using preloaded file index.")
+                index = file_index
+                big_npy = index.reconstruct_n(0, index.ntotal)
             elif file_index == "":
                 print("File index was empty.")
                 index = None
@@ -73,7 +82,7 @@ class FeatureExtractor:
             index = None
             big_npy = None
         return index, big_npy
-    
+
     # Fork Feature: Compute f0 with the crepe method
     def get_f0_crepe_computation(
         self,
@@ -93,8 +102,8 @@ class FeatureExtractor:
         if audio.ndim == 2 and audio.shape[0] > 1:
             audio = torch.mean(audio, dim=0, keepdim=True).detach()
         audio = audio.detach()
-        hop_length = kwargs.get('crepe_hop_length', 160)
-        model = kwargs.get('model', 'full') 
+        hop_length = kwargs.get("crepe_hop_length", 160)
+        model = kwargs.get("model", "full")
         print("Initiating prediction with a crepe_hop_length of: " + str(hop_length))
         pitch: torch.Tensor = torchcrepe.predict(
             audio,
@@ -118,20 +127,13 @@ class FeatureExtractor:
         )
         f0 = np.nan_to_num(target)
         return f0  # Resized f0
-    
-    def get_f0_official_crepe_computation(
-        self,
-        x,
-        f0_min,
-        f0_max,
-        *args,
-        **kwargs
-    ):
+
+    def get_f0_official_crepe_computation(self, x, f0_min, f0_max, *args, **kwargs):
         # Pick a batch size that doesn't cause memory errors on your gpu
         batch_size = 512
         # Compute pitch using first gpu
         audio = torch.tensor(np.copy(x))[None].float()
-        model = kwargs.get('model', 'full') 
+        model = kwargs.get("model", "full")
         f0, pd = torchcrepe.predict(
             audio,
             self.sr,
@@ -151,14 +153,19 @@ class FeatureExtractor:
 
     def get_pm(self, x, *args, **kwargs):
         import parselmouth
+
         p_len = x.shape[0] // 160 + 1
-        f0 = parselmouth.Sound(x, self.sr).to_pitch_ac(
-            time_step=0.01,
-            voicing_threshold=0.6,
-            pitch_floor=kwargs.get('f0_min'),
-            pitch_ceiling=kwargs.get('f0_max'),
-        ).selected_array["frequency"]
-        
+        f0 = (
+            parselmouth.Sound(x, self.sr)
+            .to_pitch_ac(
+                time_step=0.01,
+                voicing_threshold=0.6,
+                pitch_floor=kwargs.get("f0_min"),
+                pitch_ceiling=kwargs.get("f0_max"),
+            )
+            .selected_array["frequency"]
+        )
+
         pad_size = (p_len - len(f0) + 1) // 2
         if pad_size > 0 or p_len - len(f0) - pad_size > 0:
             # print(pad_size, p_len - len(f0) - pad_size)
@@ -169,9 +176,9 @@ class FeatureExtractor:
         f0_spectral = pyworld.harvest(
             x.astype(np.double),
             fs=self.sr,
-            f0_ceil=kwargs.get('f0_max'),
-            f0_floor=kwargs.get('f0_min'),
-            frame_period=1000 * kwargs.get('hop_length', 160) / self.sr,
+            f0_ceil=kwargs.get("f0_max"),
+            f0_floor=kwargs.get("f0_min"),
+            frame_period=1000 * kwargs.get("hop_length", 160) / self.sr,
         )
         return pyworld.stonemask(x.astype(np.double), *f0_spectral, self.sr)
 
@@ -179,18 +186,22 @@ class FeatureExtractor:
         f0_spectral = pyworld.dio(
             x.astype(np.double),
             fs=self.sr,
-            f0_ceil=kwargs.get('f0_max'),
-            f0_floor=kwargs.get('f0_min'),
-            frame_period=1000 * kwargs.get('hop_length', 160) / self.sr,
+            f0_ceil=kwargs.get("f0_max"),
+            f0_floor=kwargs.get("f0_min"),
+            frame_period=1000 * kwargs.get("hop_length", 160) / self.sr,
         )
         return pyworld.stonemask(x.astype(np.double), *f0_spectral, self.sr)
 
-
     def get_rmvpe(self, x, *args, **kwargs):
-        if not hasattr(self,"model_rmvpe"):
-            self.model_rmvpe = RMVPE(os.path.join(BASE_MODELS_DIR,f"rmvpe.{'onnx' if self.onnx else 'pt'}"), is_half=self.is_half, device=self.device, onnx=self.onnx)
+        if not hasattr(self, "model_rmvpe"):
+            self.model_rmvpe = RMVPE(
+                os.path.join(BASE_MODELS_DIR, f"rmvpe.{'onnx' if self.onnx else 'pt'}"),
+                is_half=self.is_half,
+                device=self.device,
+                onnx=self.onnx,
+            )
 
-        # if self.onnx == False: 
+        # if self.onnx == False:
         return self.model_rmvpe.infer_from_audio(x, thred=0.03)
         # else:
         #     f0 = self.model_rmvpe.infer_from_audio(x, thred=0.03)
@@ -201,11 +212,17 @@ class FeatureExtractor:
         #     return f0
 
     def get_pitch_dependant_rmvpe(self, x, f0_min=1, f0_max=40000, *args, **kwargs):
-        if not hasattr(self,"model_rmvpe"):
-            self.model_rmvpe = RMVPE(os.path.join(BASE_MODELS_DIR,f"rmvpe.{'onnx' if self.onnx else 'pt'}"), is_half=self.is_half, device=self.device, onnx=self.onnx)
+        if not hasattr(self, "model_rmvpe"):
+            self.model_rmvpe = RMVPE(
+                os.path.join(BASE_MODELS_DIR, f"rmvpe.{'onnx' if self.onnx else 'pt'}"),
+                is_half=self.is_half,
+                device=self.device,
+                onnx=self.onnx,
+            )
 
-        return self.model_rmvpe.infer_from_audio_with_pitch(x, thred=0.03, f0_min=f0_min, f0_max=f0_max)
-
+        return self.model_rmvpe.infer_from_audio_with_pitch(
+            x, thred=0.03, f0_min=f0_min, f0_max=f0_max
+        )
 
     # Fork Feature: Acquire median hybrid f0 estimation calculation
     def get_f0_hybrid_computation(
@@ -218,14 +235,19 @@ class FeatureExtractor:
         filter_radius,
         crepe_hop_length,
         time_step,
-        **kwargs
+        **kwargs,
     ):
         # Get various f0 methods from input to use in the computation stack
-        params = {'x': x, 'f0_min': f0_min, 
-          'f0_max': f0_max, 'time_step': time_step, 'filter_radius': filter_radius, 
-          'crepe_hop_length': crepe_hop_length, 'model': "full"
+        params = {
+            "x": x,
+            "f0_min": f0_min,
+            "f0_max": f0_max,
+            "time_step": time_step,
+            "filter_radius": filter_radius,
+            "crepe_hop_length": crepe_hop_length,
+            "model": "full",
         }
-        
+
         f0_computation_stack = []
 
         print(f"Calculating f0 pitch estimations for methods: {methods_list}")
@@ -233,21 +255,25 @@ class FeatureExtractor:
         x /= np.quantile(np.abs(x), 0.999)
         # Get f0 calculations for all methods specified
 
-        def _get_f0(method,params):
+        def _get_f0(method, params):
             if method not in self.f0_method_dict:
                 raise Exception(f"Method {method} not found.")
             f0 = self.f0_method_dict[method](**params)
-            if method == 'harvest' and filter_radius > 2:
+            if method == "harvest" and filter_radius > 2:
                 f0 = signal.medfilt(f0, filter_radius)
                 f0 = f0[1:]  # Get rid of first frame.
             return f0
 
-        with ThreadPool(max(1,get_optimal_threads())) as pool:
-            f0_computation_stack = pool.starmap(_get_f0,[(method,params) for method in methods_list])
+        with ThreadPool(max(1, get_optimal_threads())) as pool:
+            f0_computation_stack = pool.starmap(
+                _get_f0, [(method, params) for method in methods_list]
+            )
 
-        f0_computation_stack = pad_audio(*f0_computation_stack) # prevents uneven f0
+        f0_computation_stack = pad_audio(*f0_computation_stack)  # prevents uneven f0
 
-        print(f"Calculating hybrid median f0 from the stack of: {methods_list} using {merge_type} merge")
+        print(
+            f"Calculating hybrid median f0 from the stack of: {methods_list} using {merge_type} merge"
+        )
         merge_func = get_merge_func(merge_type)
         f0_median_hybrid = merge_func(f0_computation_stack, axis=0)
 
@@ -266,20 +292,28 @@ class FeatureExtractor:
         inp_f0=None,
         f0_min=50,
         f0_max=1100,
-        **kwargs
+        **kwargs,
     ):
         time_step = self.window / self.sr * 1000
         f0_mel_min = 1127 * np.log(1 + f0_min / 700)
         f0_mel_max = 1127 * np.log(1 + f0_max / 700)
-        params = {'x': x, 'f0_up_key': f0_up_key, 'f0_min': f0_min, 
-          'f0_max': f0_max, 'time_step': time_step, 'filter_radius': filter_radius, 
-          'crepe_hop_length': crepe_hop_length, 'model': "full", 'onnx': rmvpe_onnx
+        params = {
+            "x": x,
+            "f0_up_key": f0_up_key,
+            "f0_min": f0_min,
+            "f0_max": f0_max,
+            "time_step": time_step,
+            "filter_radius": filter_radius,
+            "crepe_hop_length": crepe_hop_length,
+            "model": "full",
+            "onnx": rmvpe_onnx,
         }
         print(f"get_f0 {f0_method} unused params: {kwargs}")
-        if hasattr(f0_method,"pop") and len(f0_method)==1: f0_method = f0_method.pop()
+        if hasattr(f0_method, "pop") and len(f0_method) == 1:
+            f0_method = f0_method.pop()
         if type(f0_method) == list:
             # Perform hybrid median pitch estimation
-            f0 = self.get_f0_hybrid_computation(f0_method,merge_type,**params)
+            f0 = self.get_f0_hybrid_computation(f0_method, merge_type, **params)
         else:
             f0 = self.f0_method_dict[f0_method](**params)
 
@@ -300,7 +334,7 @@ class FeatureExtractor:
             f0[self.x_pad * tf0 : self.x_pad * tf0 + len(replace_f0)] = replace_f0[
                 :shape
             ]
-        
+
         # f0bak = f0.copy()
         f0_mel = 1127 * np.log(1 + f0 / 700)
         f0_mel[f0_mel > 0] = (f0_mel[f0_mel > 0] - f0_mel_min) * 254 / (

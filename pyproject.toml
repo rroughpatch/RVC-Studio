@@ -82,3 +82,46 @@ torchaudio = { index = "pytorch-cu118" }
 name = "pytorch-cu118"
 url = "https://download.pytorch.org/whl/cu118"
 explicit = true
+
+[tool.ruff]
+target-version = "py310"
+extend-exclude = [
+    "RVC_Studio.ipynb",
+    "lib/infer_pack",
+    "lib/uvr5_pack",
+    "lib/karafan",
+    "lib/separate.py",
+    "lib/rmvpe.py",
+    "lib/train",
+    "training_cli.py",
+    "preprocessing_utils.py",
+    "rvc_for_realtime.py",
+    "pitch_extraction.py",
+    "vc_infer_pipeline.py",
+    "uvr5_cli.py",
+]
+
+[tool.ruff.lint]
+ignore = ["E402"]
+
+[tool.ty.src]
+exclude = [
+    "RVC_Studio.ipynb",
+    "lib/infer_pack/**",
+    "lib/uvr5_pack/**",
+    "lib/karafan/**",
+    "lib/separate.py",
+    "lib/rmvpe.py",
+    "lib/train/**",
+    "lib/separators.py",
+    "training_cli.py",
+    "preprocessing_utils.py",
+    "rvc_for_realtime.py",
+    "pitch_extraction.py",
+    "vc_infer_pipeline.py",
+    "uvr5_cli.py",
+    "pages/2_Train.py",
+]
+
+[tool.ty.rules]
+possibly-missing-submodule = "ignore"

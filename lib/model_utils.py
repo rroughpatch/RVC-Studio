@@ -1,25 +1,28 @@
-
 import hashlib
 import os
 import torch.nn.functional as F
 import librosa
 import torch
 
+
 def get_hash(model_path):
     try:
-        with open(model_path, 'rb') as f:
-            f.seek(- 10000 * 1024, 2)
+        with open(model_path, "rb") as f:
+            f.seek(-10000 * 1024, 2)
             model_hash = hashlib.md5(f.read()).hexdigest()
-    except:
-        model_hash = hashlib.md5(open(model_path, 'rb').read()).hexdigest()
+    except OSError:
+        with open(model_path, "rb") as f:
+            model_hash = hashlib.md5(f.read()).hexdigest()
 
     return model_hash
+
 
 def load_hubert(config):
     try:
         from fairseq import checkpoint_utils
+
         models, _, _ = checkpoint_utils.load_model_ensemble_and_task(
-            [os.path.join(os.getcwd(),"models","hubert_base.pt")],
+            [os.path.join(os.getcwd(), "models", "hubert_base.pt")],
             suffix="",
         )
         hubert_model = models[0]
@@ -33,7 +36,8 @@ def load_hubert(config):
     except Exception as e:
         print(e)
         return None
-    
+
+
 def change_rms(data1, sr1, data2, sr2, rate):  # 1是输入音频，2是输出音频,rate是2的占比
     # print(data1.max(),data2.max())
     rms1 = librosa.feature.rms(

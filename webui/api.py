@@ -1,5 +1,4 @@
 import requests
-import streamlit as st
 
 from lib.audio import audio2bytes, bytes2audio, load_input_audio
 from webui import RVC_INFERENCE_URL, UVR_INFERENCE_URL

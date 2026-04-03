@@ -1,7 +1,6 @@
 import os
 from random import shuffle
 import shlex
-import sys
 from time import sleep
 import numpy as np
 from sklearn.cluster import MiniBatchKMeans
@@ -43,10 +42,11 @@ def extract_features(exp_dir, n_threads, version, if_f0, f0method, device, sr):
     # if if_f0: #pitch extraction
     # n_p = n_threads if device=="cpu" else torch.cuda.device_count()
     n_p = max(
-        n_threads // (len(f0method) if type(f0method) == list else os.cpu_count()), 1
+        n_threads // (len(f0method) if isinstance(f0method, list) else os.cpu_count()),
+        1,
     )
 
-    if type(f0method) == list:
+    if isinstance(f0method, list):
         return "\n".join(
             [
                 extract_features_trainset(
@@ -612,6 +612,6 @@ if __name__ == "__main__":
             if st.button(i18n("training.train_speaker.submit"), disabled=disabled):
                 st.toast(train_speaker_embedding(state.exp_dir, model_log_dir))
             else:
-                st.markdown(f"*Only required for speecht5 TTS*")
+                st.markdown("*Only required for speecht5 TTS*")
 
         active_subprocess_list()
