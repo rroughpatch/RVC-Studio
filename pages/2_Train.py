@@ -5,7 +5,7 @@ from time import sleep
 import numpy as np
 from sklearn.cluster import MiniBatchKMeans
 import streamlit as st
-from webui import MENU_ITEMS, N_THREADS_OPTIONS, PITCH_EXTRACTION_OPTIONS, SR_MAP
+from webui import MENU_ITEMS, PITCH_EXTRACTION_OPTIONS, SR_MAP
 from lib import BASE_DIR, config, i18n, BASE_MODELS_DIR, DATASETS_DIR, LOG_DIR
 
 st.set_page_config(layout="centered", menu_items=MENU_ITEMS)
@@ -386,13 +386,18 @@ if __name__ == "__main__":
     with SessionStateContext("training", init_training_state()) as state:
         with st.container():
             col1, col2 = st.columns(2)
+            max_threads = max(1, os.cpu_count() or 1)
             state.exp_dir = col1.text_input(
                 i18n("training.exp_dir"), value=state.exp_dir, placeholder="Sayano"
             )  # model_name
-            state.n_threads = col2.selectbox(
-                i18n("training.n_threads"),
-                options=N_THREADS_OPTIONS,
-                index=get_index(N_THREADS_OPTIONS, state.n_threads),
+            state.n_threads = int(
+                col2.number_input(
+                    i18n("training.n_threads"),
+                    min_value=1,
+                    max_value=max_threads,
+                    step=1,
+                    value=min(max(int(state.n_threads or 1), 1), max_threads),
+                )
             )
 
             col1, col2, col3 = st.columns(3)
