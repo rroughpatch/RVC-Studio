@@ -1,6 +1,9 @@
 import argparse
 import subprocess
-from .bootstrap import ensure_repo_root
+try:
+    from .bootstrap import ensure_repo_root
+except ImportError:
+    from services.ml.bootstrap import ensure_repo_root
 
 ensure_repo_root()
 

@@ -29,3 +29,15 @@ During this transition, the repo root remains the data root.
 The JavaScript workspace now uses Vite+ (`vp`) for orchestration, but the Python
 runtime still needs explicit path and process-boundary changes before it can move
 under `services/ml` safely.
+
+Moved into `services/ml` so far:
+
+- `api.py`
+- `server/`
+- `training_cli.py`
+- `tts_cli.py`
+- `uvr5_cli.py`
+- `preprocessing_utils.py`
+- `vc_infer_pipeline.py`
+- `pitch_extraction.py`
+- `rvc_for_realtime.py`

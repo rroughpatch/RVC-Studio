@@ -3,7 +3,7 @@ import json
 import os
 from typing import Any, Union
 from lib.utils import get_filenames
-from vc_infer_pipeline import get_vc, vc_single
+from ..vc_infer_pipeline import get_vc, vc_single
 from lib.audio import load_input_audio, save_input_audio, bytes2audio
 from lib import BASE_CACHE_DIR, BASE_MODELS_DIR, config
 

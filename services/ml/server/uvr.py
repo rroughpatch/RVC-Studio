@@ -2,7 +2,7 @@ import hashlib
 import os
 from typing import Any, List, Union
 from lib.utils import get_filenames
-from uvr5_cli import split_audio
+from ..uvr5_cli import split_audio
 from lib.audio import save_input_audio, bytes2audio
 from lib import BASE_CACHE_DIR, BASE_MODELS_DIR, config
 
