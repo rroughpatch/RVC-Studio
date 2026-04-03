@@ -12,6 +12,17 @@ __pycache__
 *.env
 !/logs/mute
 .cache
+.vite-hooks
+.vscode
+AGENTS.md
+CLAUDE.md
 *.log
 /vox/
 /vox.zip
+node_modules
+**/node_modules
+**/.vite
+apps/**/dist
+services/**/dist
+packages/**/dist
+*.tsbuildinfo

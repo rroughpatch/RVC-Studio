@@ -3,6 +3,21 @@
 # RVC Studio
 This project provides a comprehensive platform for training RVC models and generating AI voice covers. Use the app to download the required files before using or manually download them here: https://huggingface.co/datasets/SayanoAI/RVC-Studio/tree/main
 
+## Monorepo Migration
+This repository is being restructured into a browser-first monorepo:
+
+- `apps/web`: Vite + React frontend
+- `services/gateway`: Bun + Elysia local API and orchestration layer
+- `services/ml`: Python compute service for RVC, UVR, TTS, and training
+- `packages/shared`: shared TypeScript types and constants
+
+Current status:
+
+- The workspace now uses Vite+ (`vp`) for root task orchestration and staged-file hooks.
+- Package-level runtime commands can still use Bun where that makes sense.
+- The existing Python runtime still lives at the repo root for compatibility.
+- `models`, `songs`, `output`, `logs`, `datasets`, and `configs` remain top-level data directories during migration.
+
 ## Features
 * Youtube music downloader: download any music video from Youtube as an mp3 file with just one click.
 * 1-click AI song covers: easily create AI song covers using RVC.
