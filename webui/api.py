@@ -18,7 +18,7 @@ def get_rvc_models():
                 if req.status_code == 200:
                     fnames = req.json()
         else:
-            from services.ml.server.rvc import list_rvc_models
+            from server.rvc import list_rvc_models
 
             fnames = list_rvc_models()
     except Exception as e:
@@ -35,7 +35,7 @@ def get_uvr_models():
                 if req.status_code == 200:
                     fnames = req.json()
         else:
-            from services.ml.server.uvr import list_uvr_models
+            from server.uvr import list_uvr_models
 
             fnames = list_uvr_models()
     except Exception as e:
@@ -52,7 +52,7 @@ def get_uvr_preprocess_models():
                 if req.status_code == 200:
                     fnames = req.json()
         else:
-            from services.ml.server.uvr import list_uvr_denoise_models
+            from server.uvr import list_uvr_denoise_models
 
             fnames = list_uvr_denoise_models()
     except Exception as e:
@@ -69,7 +69,7 @@ def get_uvr_postprocess_models():
                 if req.status_code == 200:
                     fnames = req.json()
         else:
-            from services.ml.server.uvr import list_uvr_denoise_models
+            from server.uvr import list_uvr_denoise_models
 
             fnames = list_uvr_denoise_models()
     except Exception as e:
@@ -94,7 +94,7 @@ def split_vocals(audio_path, **args):
                     instrumentals = bytes2audio(instrumentals)
                 return vocals, instrumentals, input_audio
     else:
-        from services.ml.server.uvr import split_vocals as split_vocals_local
+        from server.uvr import split_vocals as split_vocals_local
 
         result = split_vocals_local(**body)
         if result:
@@ -116,6 +116,6 @@ def convert_vocals(model_name, input_audio, **kwargs):
                 audio = bytes2audio(response["data"])
                 return audio
     else:
-        from services.ml.server.rvc import convert_vocals as convert_vocals_local
+        from server.rvc import convert_vocals as convert_vocals_local
 
         return convert_vocals_local(name=model_name, **body)

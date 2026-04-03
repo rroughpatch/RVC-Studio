@@ -33,8 +33,7 @@ def start_server(host, port):
     base_url = f"http://{host}:{port}"
     cmd = [
         config.python_cmd,
-        "-m",
-        "services.ml",
+        os.path.join(BASE_DIR, "api.py"),
         f"--port={port}",
         f"--host={host}",
     ]

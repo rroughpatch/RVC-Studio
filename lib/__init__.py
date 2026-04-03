@@ -3,7 +3,6 @@ from functools import lru_cache
 import os
 import shelve
 from contextlib import contextmanager
-from pathlib import Path
 import sys
 import weakref
 from config import Config
@@ -17,12 +16,10 @@ def load_config():
 
 @lru_cache
 def get_cwd():
-    root_override = os.environ.get("RVC_STUDIO_ROOT")
-    base_dir = Path(root_override).expanduser().resolve() if root_override else Path(__file__).resolve().parent.parent
-    base_dir_str = str(base_dir)
-    if base_dir_str not in sys.path:
-        sys.path.insert(0, base_dir_str)
-    return base_dir_str
+    CWD = os.getcwd()
+    if CWD not in sys.path:
+        sys.path.append(CWD)
+    return CWD
 
 
 class ObjectNamespace(dict):
